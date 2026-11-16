@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Klinik Paneli</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--ana:#0f766e;--ana2:#115e59;--acik:#f0fdfa;--zemin:#f5f6f7;--kart:#fff;--yazi:#1f2937;--soluk:#6b7280;--cizgi:#e5e7eb;--kirmizi:#b91c1c;--sari:#b45309}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--zemin);color:var(--yazi);font-size:16px;line-height:1.4}
+header{background:var(--ana);color:#fff;padding:12px 16px;position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px}
+header h1{font-size:17px;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+header select{max-width:55%;background:var(--ana2);color:#fff;border:0;border-radius:8px;padding:6px;font-size:14px}
+main{padding:12px 12px 90px;max-width:720px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--cizgi);display:flex;z-index:5;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:10px 2px;font-size:12px;color:var(--soluk);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button span{font-size:20px}
+nav button.secili{color:var(--ana);font-weight:600}
+.kart{background:var(--kart);border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1px solid var(--cizgi)}
+.kart.tik{cursor:pointer}
+.satir{display:flex;align-items:center;gap:10px}
+.satir .buyu{flex:1;min-width:0}
+.baslik{font-weight:600}
+.alt{color:var(--soluk);font-size:14px}
+.saat{font-weight:700;color:var(--ana);min-width:52px}
+h2{font-size:18px;margin:6px 2px 10px}
+h3{font-size:15px;margin:16px 2px 8px;color:var(--soluk);text-transform:uppercase;letter-spacing:.03em}
+button.b{background:var(--ana);color:#fff;border:0;border-radius:10px;padding:11px 14px;font-size:15px;font-weight:600}
+button.b.ikincil{background:#fff;color:var(--ana);border:1px solid var(--ana)}
+button.b.tehlike{background:#fff;color:var(--kirmizi);border:1px solid var(--kirmizi)}
+button.b.kucuk{padding:6px 10px;font-size:13px;border-radius:8px}
+button.b.tam{width:100%}
+.dugmeler{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+label{display:block;font-size:14px;color:var(--soluk);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--cizgi);border-radius:10px;font-size:16px;font-family:inherit;background:#fff;color:var(--yazi)}
+textarea{min-height:90px}
+input[type=checkbox]{width:22px;height:22px}
+.onay{display:flex;align-items:center;gap:10px;margin-top:12px}
+.onay label{margin:0;color:var(--yazi);font-size:15px}
+.rozet{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--acik);color:var(--ana);font-weight:600}
+.rozet.k{background:#fee2e2;color:var(--kirmizi)}
+.rozet.s{background:#fef3c7;color:var(--sari)}
+.rozet.g{background:#f3f4f6;color:var(--soluk)}
+.perde{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.pencere{background:#fff;width:100%;max-width:720px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px 24px}
+.pencere h2{margin-top:0}
+#bildirim{position:fixed;left:50%;transform:translateX(-50%);bottom:80px;background:#111827;color:#fff;padding:10px 16px;border-radius:10px;z-index:40;display:none;max-width:90%;font-size:14px}
+.bos{text-align:center;color:var(--soluk);padding:28px 10px}
+.giris{max-width:380px;margin:12vh auto;padding:20px}
+.gun{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.gun input{flex:1}
+.balon{max-width:82%;padding:8px 12px;border-radius:14px;margin:6px 0;font-size:15px;white-space:pre-wrap;word-break:break-word}
+.balon.gelen{background:#fff;border:1px solid var(--cizgi)}
+.balon.giden{background:#d1fae5;margin-left:auto}
+.balon.personel{background:#dbeafe;margin-left:auto}
+.balon small{display:block;color:var(--soluk);font-size:11px;margin-top:2px}
+.geri{background:none;border:0;color:var(--ana);font-size:15px;padding:6px 0;font-weight:600}
+table.on{width:100%;border-collapse:collapse;font-size:13px}
+table.on td,table.on th{border:1px solid var(--cizgi);padding:4px 6px;text-align:left}
+.cubuk{height:10px;background:var(--cizgi);border-radius:99px;overflow:hidden;margin-top:6px}
+.cubuk i{display:block;height:100%;background:var(--ana)}
+</style>
+</head>
+<body>
+<div id="uyg"></div>
+<div id="pencereYeri"></div>
+<div id="bildirim"></div>
+<script>
+const SB_URL='https://zpgrljgvocfacxgdzetz.supabase.co';
+const SB_KEY='sb_publishable_Jh8ME8lcVeHP3kp4cxu2iQ_aeqkzOM6';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const D={kullanici:null,admin:false,klinikler:[],kid:null,sekme:'takvim',gun:new Date(),alt:null};
+const GUNLER=[['pzt','Pazartesi'],['sal','Salı'],['car','Çarşamba'],['per','Perşembe'],['cum','Cuma'],['cmt','Cumartesi'],['paz','Pazar']];
+const klinik=()=>D.klinikler.find(k=>k.id===D.kid);
+
+function bildir(m){const b=$('#bildirim');b.textContent=m;b.style.display='block';clearTimeout(bildir.t);bildir.t=setTimeout(()=>b.style.display='none',3200)}
+function hata(e){console.error(e);if(e&&e.code==='23P01')return bildir('Bu saat dolu. Başka bir saat seçin.');bildir('Olmadı: '+(e?.message||e))}
+const tarihYaz=d=>new Date(d).toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'});
+const saatYaz=d=>new Date(d).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+const gunStr=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
+function yas(dt){if(!dt)return '';const ay=Math.floor((Date.now()-new Date(dt))/2629800000);return ay<12?ay+' aylık':Math.floor(ay/12)+' yaşında'}
+function telDuzelt(t){let s=String(t??'').replace(/\D/g,'');if(s.startsWith('00'))s=s.slice(2);if(s.startsWith('0'))s='9'+s;if(s.length===10&&s.startsWith('5'))s='90'+s;return s}
+
+/* ---------- PENCERE VE FORM ---------- */
+function pencereAc(html){$('#pencereYeri').innerHTML='<div class="perde" onclick="if(event.target===this)pencereKapat()"><div class="pencere">'+html+'</div></div>'}
+function pencereKapat(){$('#pencereYeri').innerHTML=''}
+function alanHtml(a,v){
+  const id='f_'+a.k, val=v?.[a.k];
+  if(a.tip==='onay')return `<div class="onay"><input type="checkbox" id="${id}" ${val?'checked':''}><label for="${id}">${esc(a.ad)}</label></div>`;
+  let g;
+  if(a.tip==='uzun')g=`<textarea id="${id}" placeholder="${esc(a.ipucu||'')}">${esc(val)}</textarea>`;
+  else if(a.tip==='secim')g=`<select id="${id}">${a.secenekler.map(o=>`<option value="${esc(o[0])}" ${String(val??'')===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
+  else g=`<input id="${id}" type="${a.tip==='sayi'?'number':a.tip||'text'}" ${a.tip==='sayi'?'step="any" inputmode="decimal"':''} value="${esc(val)}" placeholder="${esc(a.ipucu||'')}">`;
+  return `<label for="${id}">${esc(a.ad)}</label>${g}`;
+}
+function alanOku(alanlar){const o={};for(const a of alanlar){const e=$('#f_'+a.k);if(a.tip==='onay')o[a.k]=e.checked;else{let v=e.value.trim();if(v==='')v=null;else if(a.tip==='sayi')v=Number(v);o[a.k]=v}}return o}
+function formAc(baslik,alanlar,deger,kaydet,sil){
+  formAc.k=async()=>{const o=alanOku(alanlar);for(const a of alanlar)if(a.zorunlu&&(o[a.k]===null||o[a.k]===''))return bildir(a.ad+' boş olamaz');try{await kaydet(o);pencereKapat()}catch(e){hata(e)}};
+  formAc.s=async()=>{if(!confirm('Silinsin mi? Bu işlem geri alınamaz.'))return;try{await sil();pencereKapat()}catch(e){hata(e)}};
+  pencereAc(`<h2>${esc(baslik)}</h2>${alanlar.map(a=>alanHtml(a,deger)).join('')}
+  <div class="dugmeler"><button class="b" onclick="formAc.k()">Kaydet</button><button class="b ikincil" onclick="pencereKapat()">Vazgeç</button>${sil?'<button class="b tehlike" onclick="formAc.s()">Sil</button>':''}</div>`);
+}
+async function calistir(q){const {data,error}=await q;if(error)throw error;return data}
+
+/* ---------- GİRİŞ ---------- */
+async function basla(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return girisCiz();
+  D.kullanici=session.user;
+  try{
+    D.klinikler=await calistir(sb.from('klinik').select('*').order('ad'));
+    const a=await calistir(sb.from('platform_admin').select('user_id'));
+    D.admin=a.length>0;
+  }catch(e){hata(e)}
+  let k=null;try{k=localStorage.getItem('kid')}catch(e){}
+  D.kid=D.klinikler.find(x=>x.id===k)?.id||D.klinikler[0]?.id||null;
+  ciz();
+}
+function girisCiz(){
+  $('#uyg').innerHTML=`<div class="giris"><h2>🐾 Klinik Paneli</h2><div class="kart">
+  <label>E-posta</label><input id="gE" type="email" autocomplete="username">
+  <label>Şifre</label><input id="gS" type="password" autocomplete="current-password">
+  <div class="dugmeler"><button class="b tam" onclick="girisYap()">Giriş yap</button></div></div></div>`;
+}
+async function girisYap(){const {error}=await sb.auth.signInWithPassword({email:$('#gE').value.trim(),password:$('#gS').value});if(error)return bildir('E-posta ya da şifre hatalı');basla()}
+async function cikis(){await sb.auth.signOut();location.reload()}
+
+/* ---------- ANA ÇERÇEVE ---------- */
+const SEKMELER=[['takvim','📅','Takvim'],['musteri','🐶','Müşteriler'],['konusma','💬','Konuşmalar'],['ayar','⚙️','Ayarlar']];
+function ciz(){
+  const k=klinik();
+  $('#uyg').innerHTML=`<header><h1>🐾 ${esc(k?k.ad:'Klinik yok')}</h1>${D.klinikler.length>1?`<select onchange="klinikSec(this.value)">${D.klinikler.map(x=>`<option value="${x.id}" ${x.id===D.kid?'selected':''}>${esc(x.ad)}</option>`).join('')}</select>`:''}</header>
+  <main id="icerik"></main>
+  <nav>${SEKMELER.map(s=>`<button class="${D.sekme===s[0]?'secili':''}" onclick="sekme('${s[0]}')"><span>${s[1]}</span>${s[2]}</button>`).join('')}</nav>`;
+  if(!k){$('#icerik').innerHTML='<div class="bos">Henüz bir klinik tanımlı değil.</div>'+(D.admin?'<button class="b tam" onclick="klinikEkle()">+ Yeni klinik ekle</button>':'');return}
+  ({takvim:takvimCiz,musteri:musteriCiz,konusma:konusmaCiz,ayar:ayarCiz})[D.sekme]();
+}
+function sekme(s){D.sekme=s;D.alt=null;ciz();scrollTo(0,0)}
+function klinikSec(id){D.kid=id;try{localStorage.setItem('kid',id)}catch(e){}D.alt=null;ciz()}
+const ic=h=>{$('#icerik').innerHTML=h};
+
+/* ---------- TAKVİM ---------- */
+const DURUM={planli:['Planlı',''],tamamlandi:['Geldi','g'],iptal:['İptal','k'],gelmedi:['Gelmedi','s']};
+async function takvimCiz(){
+  const g=new Date(D.gun);g.setHours(0,0,0,0);const s=new Date(g);s.setDate(s.getDate()+1);
+  ic('<div class="bos">Yükleniyor...</div>');
+  try{
+    const [r,kz]=await Promise.all([
+      calistir(sb.from('randevu').select('*,musteri(ad,telefon),hayvan(ad,tur),hizmet(ad)').eq('klinik_id',D.kid).gte('baslangic',g.toISOString()).lt('baslangic',s.toISOString()).order('baslangic')),
+      calistir(sb.from('kapali_zaman').select('*').eq('klinik_id',D.kid).lt('baslangic',s.toISOString()).gt('bitis',g.toISOString()).order('baslangic'))]);
+    const aktif=r.filter(x=>x.durum==='planli'||x.durum==='tamamlandi').length;
+    ic(`<div class="gun"><button class="b ikincil kucuk" onclick="gunKay(-1)">◀</button><input type="date" value="${gunStr(g)}" onchange="D.gun=new Date(this.value+'T00:00');takvimCiz()"><button class="b ikincil kucuk" onclick="gunKay(1)">▶</button></div>
+    <h2>${g.toLocaleDateString('tr-TR',{weekday:'long',day:'numeric',month:'long'})} <span class="rozet">${aktif} randevu</span></h2>
+    <div class="dugmeler" style="margin:0 0 12px"><button class="b" onclick="randevuForm()">+ Randevu</button><button class="b ikincil" onclick="kapatForm()">Saat kapat</button></div>
+    ${kz.map(x=>`<div class="kart"><div class="satir"><div class="buyu"><span class="rozet g">Kapalı</span> ${saatYaz(x.baslangic)} - ${saatYaz(x.bitis)} <span class="alt">${esc(x.neden||'')}</span></div><button class="b tehlike kucuk" onclick="kapatSil('${x.id}')">Aç</button></div></div>`).join('')}
+    ${r.length?r.map(x=>`<div class="kart"><div class="satir"><div class="saat">${saatYaz(x.baslangic)}</div><div class="buyu"><div class="baslik">${esc(x.hayvan?.ad||'Hayvan belirtilmedi')} <span class="alt">${esc(x.hayvan?.tur||'')}</span></div><div class="alt">${esc(x.musteri?.ad||'')} · ${esc(x.hizmet?.ad||'')}</div>${x.notlar?`<div class="alt">Not: ${esc(x.notlar)}</div>`:''}</div><span class="rozet ${DURUM[x.durum][1]}">${DURUM[x.durum][0]}</span></div>
+      ${x.durum==='planli'?`<div class="dugmeler"><button class="b kucuk" onclick="randevuDurum('${x.id}','tamamlandi')">Geldi</button><button class="b ikincil kucuk" onclick="randevuDurum('${x.id}','gelmedi')">Gelmedi</button><button class="b tehlike kucuk" onclick="randevuDurum('${x.id}','iptal')">İptal</button></div>`:''}</div>`).join(''):'<div class="bos">Bu gün için randevu yok.</div>'}`);
+  }catch(e){hata(e)}
+}
+function gunKay(n){D.gun=new Date(D.gun);D.gun.setDate(D.gun.getDate()+n);takvimCiz()}
+async function randevuDurum(id,d){if(d==='iptal'&&!confirm('Randevu iptal edilsin mi?'))return;try{await calistir(sb.from('randevu').update({durum:d}).eq('id',id));if(d==='tamamlandi'){const r=await calistir(sb.from('randevu').select('musteri_id,baslangic').eq('id',id).single());if(r.musteri_id)await calistir(sb.from('musteri').update({son_ziyaret:gunStr(r.baslangic)}).eq('id',r.musteri_id))}takvimCiz()}catch(e){hata(e)}}
+async function randevuForm(){
+  try{
+    const [ms,hs,hz]=await Promise.all([calistir(sb.from('musteri').select('id,ad,telefon').eq('klinik_id',D.kid).order('ad')),calistir(sb.from('hayvan').select('id,ad,musteri_id').eq('klinik_id',D.kid).eq('vefat',false).order('ad')),calistir(sb.from('hizmet').select('id,ad,sure_dk').eq('klinik_id',D.kid).eq('aktif',true).order('sira'))]);
+    if(!ms.length)return bildir('Önce bir müşteri ekleyin');if(!hz.length)return bildir('Önce Ayarlar bölümünden hizmet ekleyin');
+    const hayvanSec=hs.map(h=>[h.id,h.ad+' ('+(ms.find(m=>m.id===h.musteri_id)?.ad||'?')+')']);
+    formAc('Yeni randevu',[{k:'hayvan_id',ad:'Hayvan (sahibi)',tip:'secim',secenekler:hayvanSec,zorunlu:true},{k:'hizmet_id',ad:'Hizmet',tip:'secim',secenekler:hz.map(h=>[h.id,h.ad+' ('+h.sure_dk+' dk)'])},{k:'tarih',ad:'Tarih',tip:'date',zorunlu:true},{k:'saat',ad:'Saat',tip:'time',zorunlu:true},{k:'notlar',ad:'Not',tip:'uzun'}],
+      {tarih:gunStr(D.gun),saat:'10:00'},async o=>{
+        const h=hs.find(x=>x.id===o.hayvan_id),z=hz.find(x=>x.id===o.hizmet_id);
+        const b=new Date(o.tarih+'T'+o.saat),bt=new Date(b.getTime()+z.sure_dk*60000);
+        await calistir(sb.from('randevu').insert({klinik_id:D.kid,musteri_id:h.musteri_id,hayvan_id:h.id,hizmet_id:z.id,baslangic:b.toISOString(),bitis:bt.toISOString(),notlar:o.notlar,kaynak:'panel'}));
+        D.gun=new Date(o.tarih+'T00:00');bildir('Randevu eklendi');takvimCiz()});
+  }catch(e){hata(e)}
+}
+function kapatForm(){formAc('Saat kapat',[{k:'tarih',ad:'Tarih',tip:'date',zorunlu:true},{k:'bas',ad:'Başlangıç',tip:'time',zorunlu:true},{k:'bit',ad:'Bitiş',tip:'time',zorunlu:true},{k:'neden',ad:'Neden (isteğe bağlı)'}],{tarih:gunStr(D.gun),bas:'14:00',bit:'15:00'},async o=>{const b=new Date(o.tarih+'T'+o.bas),t=new Date(o.tarih+'T'+o.bit);if(t<=b)throw new Error('Bitiş saati başlangıçtan sonra olmalı');await calistir(sb.from('kapali_zaman').insert({klinik_id:D.kid,baslangic:b.toISOString(),bitis:t.toISOString(),neden:o.neden}));bildir('Saat kapatıldı');takvimCiz()})}
+async function kapatSil(id){try{await calistir(sb.from('kapali_zaman').delete().eq('id',id));takvimCiz()}catch(e){hata(e)}}
+
+/* ---------- MÜŞTERİLER ---------- */
+const MUSTERI_ALAN=[{k:'ad',ad:'Ad soyad',zorunlu:true},{k:'telefon',ad:'Telefon',tip:'tel',zorunlu:true,ipucu:'05xx xxx xx xx'},{k:'notlar',ad:'Notlar',tip:'uzun'},{k:'hatirlatma_izni',ad:'Hatırlatma mesajı izni var',tip:'onay'},{k:'kampanya_izni',ad:'Kampanya mesajı izni var',tip:'onay'},{k:'dur',ad:'Otomatik mesajları durdur (DUR yazdı)',tip:'onay'}];
+const HAYVAN_ALAN=[{k:'ad',ad:'Hayvanın adı',zorunlu:true},{k:'tur',ad:'Tür',ipucu:'kedi, köpek, kuş...'},{k:'irk',ad:'Irk'},{k:'cinsiyet',ad:'Cinsiyet',tip:'secim',secenekler:[['','Belirtilmedi'],['dişi','Dişi'],['erkek','Erkek']]},{k:'dogum_tarihi',ad:'Doğum tarihi (yaklaşık olabilir)',tip:'date'},{k:'kilo',ad:'Kilo (kg)',tip:'sayi'},{k:'notlar',ad:'Notlar',tip:'uzun'}];
+async function musteriCiz(){
+  if(D.alt?.musteri)return musteriDetay(D.alt.musteri);
+  ic('<div class="bos">Yükleniyor...</div>');
+  try{
+    const ms=await calistir(sb.from('musteri').select('*,hayvan(ad,vefat)').eq('klinik_id',D.kid).order('ad'));
+    musteriCiz.liste=ms;
+    ic(`<input id="ara" placeholder="Ara: isim, telefon veya hayvan adı" oninput="musteriListe()">
+    <div class="dugmeler" style="margin-bottom:12px"><button class="b" onclick="musteriEkle()">+ Müşteri</button><button class="b ikincil" onclick="excelAc()">Excel'den aktar</button></div><div id="mListe"></div>`);
+    musteriListe();
+  }catch(e){hata(e)}
+}
+function musteriListe(){
+  const a=($('#ara')?.value||'').toLocaleLowerCase('tr');
+  const l=musteriCiz.liste.filter(m=>!a||[m.ad,m.telefon,...m.hayvan.map(h=>h.ad)].join(' ').toLocaleLowerCase('tr').includes(a));
+  $('#mListe').innerHTML=l.length?l.map(m=>`<div class="kart tik" onclick="D.alt={musteri:'${m.id}'};musteriCiz()"><div class="baslik">${esc(m.ad||'İsimsiz')} ${m.dur?'<span class="rozet k">DUR</span>':''}</div><div class="alt">${esc(m.telefon)} · ${m.hayvan.map(h=>esc(h.ad)+(h.vefat?' 🕊':'')).join(', ')||'hayvan kaydı yok'}</div></div>`).join(''):'<div class="bos">Kayıt bulunamadı.</div>';
+}
+function musteriEkle(){formAc('Yeni müşteri',MUSTERI_ALAN.slice(0,3),{},async o=>{o.telefon=telDuzelt(o.telefon);const r=await calistir(sb.from('musteri').insert({...o,klinik_id:D.kid}).select().single());D.alt={musteri:r.id};musteriCiz()})}
+async function musteriDetay(id){
+  try{
+    const m=await calistir(sb.from('musteri').select('*').eq('id',id).single());
+    const hs=await calistir(sb.from('hayvan').select('*,uygulama_kaydi(*)').eq('musteri_id',id).order('ad'));
+    musteriDetay.m=m;musteriDetay.hs=hs;
+    ic(`<button class="geri" onclick="D.alt=null;musteriCiz()">‹ Müşteriler</button>
+    <div class="kart"><div class="satir"><div class="buyu"><div class="baslik">${esc(m.ad||'İsimsiz')}</div><div class="alt">${esc(m.telefon)}</div><div class="alt">Son ziyaret: ${m.son_ziyaret?tarihYaz(m.son_ziyaret):'yok'}</div></div><button class="b ikincil kucuk" onclick="musteriDuzenle()">Düzenle</button></div>
+    <div style="margin-top:8px">${m.kvkk_onay_at?'<span class="rozet">KVKK onayı var</span>':'<span class="rozet s">KVKK onayı yok</span>'} ${m.hatirlatma_izni?'<span class="rozet">Hatırlatma izni</span>':''} ${m.kampanya_izni?'<span class="rozet">Kampanya izni</span>':''} ${m.dur?'<span class="rozet k">Mesajlar durduruldu</span>':''}</div>${m.notlar?`<div class="alt" style="margin-top:8px">${esc(m.notlar)}</div>`:''}</div>
+    <h3>Hayvanları</h3>
+    ${hs.map(h=>`<div class="kart"><div class="satir"><div class="buyu"><div class="baslik">${esc(h.ad)} ${h.vefat?'<span class="rozet g">Vefat etti 🕊</span>':''}</div><div class="alt">${[h.tur,h.irk,h.cinsiyet,yas(h.dogum_tarihi),h.kilo?h.kilo+' kg':''].filter(Boolean).map(esc).join(' · ')}</div>${h.notlar?`<div class="alt">${esc(h.notlar)}</div>`:''}</div><button class="b ikincil kucuk" onclick="hayvanDuzenle('${h.id}')">Düzenle</button></div>
+      ${h.uygulama_kaydi.length?'<div style="margin-top:8px">'+h.uygulama_kaydi.sort((a,b)=>b.uygulama_tarihi.localeCompare(a.uygulama_tarihi)).map(u=>`<div class="alt">💉 ${esc(u.ad)}: ${tarihYaz(u.uygulama_tarihi)}${u.sonraki_tarih?' → sonraki '+tarihYaz(u.sonraki_tarih):''} <a href="#" onclick="kayitSil('${u.id}');return false" style="color:var(--kirmizi)">sil</a></div>`).join('')+'</div>':''}
+      ${h.vefat?'':`<div class="dugmeler"><button class="b kucuk" onclick="kayitEkle('${h.id}')">+ Aşı / parazit kaydı</button><button class="b ikincil kucuk" onclick="vefatIsaretle('${h.id}')">Vefat etti olarak işaretle</button></div>`}</div>`).join('')||'<div class="bos">Hayvan kaydı yok.</div>'}
+    <button class="b tam" onclick="hayvanEkle()">+ Hayvan ekle</button>`);
+  }catch(e){hata(e)}
+}
+function musteriDuzenle(){const m=musteriDetay.m;formAc('Müşteriyi düzenle',MUSTERI_ALAN,m,async o=>{o.telefon=telDuzelt(o.telefon);await calistir(sb.from('musteri').update(o).eq('id',m.id));musteriDetay(m.id)},async()=>{await calistir(sb.from('musteri').delete().eq('id',m.id));D.alt=null;musteriCiz()})}
+function hayvanEkle(){formAc('Yeni hayvan',HAYVAN_ALAN,{},async o=>{await calistir(sb.from('hayvan').insert({...o,klinik_id:D.kid,musteri_id:musteriDetay.m.id}));musteriDetay(musteriDetay.m.id)})}
+function hayvanDuzenle(id){const h=musteriDetay.hs.find(x=>x.id===id);formAc(h.ad,HAYVAN_ALAN,h,async o=>{await calistir(sb.from('hayvan').update(o).eq('id',id));musteriDetay(musteriDetay.m.id)},async()=>{await calistir(sb.from('hayvan').delete().eq('id',id));musteriDetay(musteriDetay.m.id)})}
+async function vefatIsaretle(id){
+  if(!confirm('Bu hayvan vefat etti olarak işaretlensin mi? Ona ait tüm otomatik mesajlar ve planlı randevular durdurulur.'))return;
+  try{await calistir(sb.from('hayvan').update({vefat:true,vefat_tarihi:gunStr(new Date())}).eq('id',id));
+    await calistir(sb.from('zamanli_mesaj').update({durum:'iptal'}).eq('hayvan_id',id).eq('durum','bekliyor'));
+    await calistir(sb.from('randevu').update({durum:'iptal'}).eq('hayvan_id',id).eq('durum','planli'));
+    bildir('İşaretlendi. Otomatik mesajlar durduruldu.');musteriDetay(musteriDetay.m.id)}catch(e){hata(e)}
+}
+async function kayitEkle(hid){
+  try{const ks=await calistir(sb.from('asi_kurali').select('*').eq('klinik_id',D.kid).eq('aktif',true).order('ad'));
+    if(!ks.length)return bildir('Önce Ayarlar bölümünden aşı ve parazit kuralı ekleyin');
+    formAc('Aşı / parazit kaydı',[{k:'kural_id',ad:'Uygulama',tip:'secim',secenekler:ks.map(k=>[k.id,k.ad+' ('+k.tekrar_gun+' günde bir)'])},{k:'uygulama_tarihi',ad:'Yapıldığı tarih',tip:'date',zorunlu:true},{k:'notlar',ad:'Not'}],{uygulama_tarihi:gunStr(new Date())},async o=>{
+      const k=ks.find(x=>x.id===o.kural_id),s=new Date(o.uygulama_tarihi+'T00:00');s.setDate(s.getDate()+k.tekrar_gun);
+      await calistir(sb.from('uygulama_kaydi').insert({klinik_id:D.kid,hayvan_id:hid,kural_id:k.id,ad:k.ad,uygulama_tarihi:o.uygulama_tarihi,sonraki_tarih:gunStr(s),notlar:o.notlar}));musteriDetay(musteriDetay.m.id)});
+  }catch(e){hata(e)}
+}
+async function kayitSil(id){if(!confirm('Kayıt silinsin mi?'))return;try{await calistir(sb.from('uygulama_kaydi').delete().eq('id',id));musteriDetay(musteriDetay.m.id)}catch(e){hata(e)}}
+
+/* ---------- EXCEL AKTARMA ---------- */
+function excelAc(){pencereAc(`<h2>Excel'den müşteri aktar</h2><p class="alt">Dosyanın ilk satırı başlık olmalı. Tanınan başlıklar: <b>Ad Soyad</b>, <b>Telefon</b>, <b>Hayvan Adı</b>, <b>Tür</b>, <b>Irk</b>, <b>Doğum Tarihi</b>, <b>Kilo</b>. Sadece Ad Soyad ve Telefon zorunlu. Aynı telefon zaten varsa yeni müşteri açılmaz.</p><input type="file" accept=".xlsx,.xls,.csv" onchange="excelOku(this.files[0])"><div id="exOn"></div><div class="dugmeler"><button class="b ikincil" onclick="pencereKapat()">Kapat</button></div>`)}
+function scriptYukle(u){return new Promise((ok,no)=>{if(window.XLSX)return ok();const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>no(new Error('Excel okuyucu yüklenemedi'));document.head.appendChild(s)})}
+const BASLIK={ad:['ad soyad','adı soyadı','müşteri','musteri','isim','ad','sahip','sahibi'],telefon:['telefon','tel','gsm','cep','cep telefonu','telefon no'],hayvan:['hayvan adı','hayvan','hayvan adi','pet','pet adı','hasta adı','hasta'],tur:['tür','tur','cins'],irk:['ırk','irk'],dogum:['doğum tarihi','dogum tarihi','doğum','d.tarihi'],kilo:['kilo','ağırlık','kg']};
+async function excelOku(f){
+  if(!f)return;
+  try{await scriptYukle('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js');
+    const wb=XLSX.read(await f.arrayBuffer(),{cellDates:true});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+    const bul=(r,t)=>{for(const k of Object.keys(r))if(BASLIK[t].includes(k.trim().toLocaleLowerCase('tr')))return r[k];return ''};
+    const temiz=rows.map(r=>{let d=bul(r,'dogum');d=d instanceof Date?gunStr(d):null;const kg=parseFloat(String(bul(r,'kilo')).replace(',','.'));return {ad:String(bul(r,'ad')).trim(),telefon:telDuzelt(bul(r,'telefon')),hayvan:String(bul(r,'hayvan')).trim(),tur:String(bul(r,'tur')).trim().toLocaleLowerCase('tr')||null,irk:String(bul(r,'irk')).trim()||null,dogum:d,kilo:isNaN(kg)?null:kg}}).filter(r=>r.ad&&r.telefon.length>=10);
+    excelOku.v=temiz;
+    $('#exOn').innerHTML=`<p><b>${rows.length}</b> satır okundu, <b>${temiz.length}</b> tanesi aktarılabilir (adı ve telefonu olanlar).</p>${temiz.length?`<table class="on"><tr><th>Ad</th><th>Telefon</th><th>Hayvan</th></tr>${temiz.slice(0,5).map(r=>`<tr><td>${esc(r.ad)}</td><td>${esc(r.telefon)}</td><td>${esc(r.hayvan)}</td></tr>`).join('')}</table><p class="alt">İlk 5 satır gösteriliyor.</p><button class="b tam" onclick="excelAktar()">${temiz.length} kaydı aktar</button>`:'<p class="alt">Başlıkları kontrol edin.</p>'}`;
+  }catch(e){hata(e)}
+}
+async function excelAktar(){
+  const v=excelOku.v;$('#exOn').innerHTML='<div class="bos">Aktarılıyor...</div>';
+  try{
+    const tekil=[...new Map(v.map(r=>[r.telefon,{klinik_id:D.kid,ad:r.ad,telefon:r.telefon}])).values()];
+    for(let i=0;i<tekil.length;i+=200)await calistir(sb.from('musteri').upsert(tekil.slice(i,i+200),{onConflict:'klinik_id,telefon',ignoreDuplicates:true}));
+    const ms=await calistir(sb.from('musteri').select('id,telefon,hayvan(ad)').eq('klinik_id',D.kid));
+    const harita=new Map(ms.map(m=>[m.telefon,m]));const hy=[];
+    for(const r of v){if(!r.hayvan)continue;const m=harita.get(r.telefon);if(!m)continue;if(m.hayvan.some(h=>h.ad.toLocaleLowerCase('tr')===r.hayvan.toLocaleLowerCase('tr')))continue;m.hayvan.push({ad:r.hayvan});hy.push({klinik_id:D.kid,musteri_id:m.id,ad:r.hayvan,tur:r.tur,irk:r.irk,dogum_tarihi:r.dogum,kilo:r.kilo})}
+    for(let i=0;i<hy.length;i+=200)await calistir(sb.from('hayvan').insert(hy.slice(i,i+200)));
+    pencereKapat();bildir(tekil.length+' müşteri ve '+hy.length+' hayvan işlendi');musteriCiz();
+  }catch(e){hata(e)}
+}
+
+/* ---------- KONUŞMALAR ---------- */
+const KDURUM={asistan:['Asistanda','g'],devir_bekliyor:['Devralınmayı bekliyor','k'],personelde:['Personelde','s'],kapali:['Kapalı','g']};
+async function konusmaCiz(){
+  if(D.alt?.konusma)return konusmaDetay(D.alt.konusma);
+  ic('<div class="bos">Yükleniyor...</div>');
+  try{
+    const [ks,ss]=await Promise.all([calistir(sb.from('konusma').select('*,musteri(ad,telefon)').eq('klinik_id',D.kid).order('son_mesaj_at',{ascending:false}).limit(100)),calistir(sb.from('personel_soru').select('*,musteri(ad,telefon)').eq('klinik_id',D.kid).eq('durum','bekliyor').order('created_at'))]);
+    const bek=ks.filter(k=>k.durum==='devir_bekliyor'||k.durum==='personelde'),dig=ks.filter(k=>!bek.includes(k));
+    const kart=k=>`<div class="kart tik" onclick="D.alt={konusma:'${k.id}'};konusmaCiz()"><div class="satir"><div class="buyu"><div class="baslik">${esc(k.musteri?.ad||k.musteri?.telefon||'?')}</div><div class="alt">${esc(k.devir_ozeti||k.devir_nedeni||'')}</div><div class="alt">${tarihYaz(k.son_mesaj_at)} ${saatYaz(k.son_mesaj_at)}${k.kanal==='test'?' · test':''}</div></div><span class="rozet ${KDURUM[k.durum][1]}">${KDURUM[k.durum][0]}</span></div></div>`;
+    konusmaCiz.ss=ss;
+    ic(`<h3>Sizi bekleyenler</h3>${bek.map(kart).join('')||'<div class="bos">Bekleyen konuşma yok. 🎉</div>'}
+    <h3>Cevap bekleyen sorular</h3>${ss.map(s=>`<div class="kart"><div class="baslik">${esc(s.musteri?.ad||'Müşteri')}</div><div>${esc(s.soru)}</div><div class="dugmeler"><button class="b kucuk" onclick="soruCevap('${s.id}')">Cevapla</button></div></div>`).join('')||'<div class="bos">Bekleyen soru yok.</div>'}
+    <h3>Diğer konuşmalar</h3>${dig.map(kart).join('')||'<div class="bos">Henüz konuşma yok. Asistan çalışmaya başlayınca burada görünecek.</div>'}`);
+  }catch(e){hata(e)}
+}
+function soruCevap(id){const s=konusmaCiz.ss.find(x=>x.id===id);formAc('Soruyu cevapla',[{k:'cevap',ad:s.soru,tip:'uzun',zorunlu:true}],{},async o=>{await calistir(sb.from('personel_soru').update({cevap:o.cevap,durum:'cevaplandi'}).eq('id',id));bildir('Cevap kaydedildi');konusmaCiz()})}
+async function konusmaDetay(id){
+  try{
+    const k=await calistir(sb.from('konusma').select('*,musteri(ad,telefon)').eq('id',id).single());
+    const ms=await calistir(sb.from('mesaj').select('*').eq('konusma_id',id).order('created_at').limit(300));
+    ic(`<button class="geri" onclick="D.alt=null;konusmaCiz()">‹ Konuşmalar</button>
+    <div class="kart"><div class="baslik">${esc(k.musteri?.ad||'')} <span class="alt">${esc(k.musteri?.telefon||'')}</span></div><span class="rozet ${KDURUM[k.durum][1]}">${KDURUM[k.durum][0]}</span>${k.devir_ozeti?`<div style="margin-top:8px"><b>Özet:</b> ${esc(k.devir_ozeti)}</div>`:''}
+    <div class="dugmeler">${k.durum==='personelde'?`<button class="b" onclick="konusmaDurum('${id}','asistan')">Asistana geri ver</button>`:`<button class="b" onclick="konusmaDurum('${id}','personelde')">Konuşmayı devral</button>`}</div>
+    <div class="alt" style="margin-top:8px">Devraldığınızda asistan bu konuşmada susar. Siz geri verene kadar yazmaz.</div></div>
+    ${ms.map(m=>`<div class="balon ${m.gonderen==='musteri'?'gelen':m.gonderen==='personel'?'personel':'giden'}">${esc(m.icerik||'')}${m.medya_url?' 📎 fotoğraf':''}<small>${({musteri:'Müşteri',asistan:'Asistan',personel:'Personel',sistem:'Sistem'})[m.gonderen]} · ${saatYaz(m.created_at)}</small></div>`).join('')||'<div class="bos">Mesaj yok.</div>'}`);
+  }catch(e){hata(e)}
+}
+async function konusmaDurum(id,d){try{await calistir(sb.from('konusma').update({durum:d,anlamama_sayaci:0}).eq('id',id));bildir(d==='personelde'?'Konuşma sizde. Asistan sustu.':'Asistan yeniden devrede.');konusmaDetay(id)}catch(e){hata(e)}}
+
+/* ---------- AYARLAR ---------- */
+const TABLOLAR={
+  hizmet:{ad:'Hizmetler, süreler ve fiyatlar',tekil:'Hizmet',sira:'sira',alan:[{k:'ad',ad:'Hizmet adı',zorunlu:true},{k:'sure_dk',ad:'Süre (dakika)',tip:'sayi',zorunlu:true},{k:'fiyat',ad:'Fiyat (TL, boş bırakılabilir)',tip:'sayi'},{k:'fiyat_notu',ad:'Fiyat notu',ipucu:'örn. ırka göre değişir'},{k:'sira',ad:'Sıra',tip:'sayi'},{k:'aktif',ad:'Aktif',tip:'onay'}],vars:{sure_dk:30,aktif:true,sira:0},
+    yaz:x=>[x.ad+(x.aktif?'':' (pasif)'),x.sure_dk+' dk · '+(x.fiyat!=null?x.fiyat+' TL':'fiyat girilmedi')+(x.fiyat_notu?' · '+x.fiyat_notu:'')]},
+  asi_kurali:{ad:'Aşı ve parazit takvimi',tekil:'Kural',sira:'ad',alan:[{k:'ad',ad:'Uygulama adı',zorunlu:true,ipucu:'örn. Karma aşı'},{k:'tur',ad:'Tür',tip:'secim',secenekler:[['asi','Aşı'],['ic_parazit','İç parazit'],['dis_parazit','Dış parazit'],['diger','Diğer']]},{k:'hayvan_turu',ad:'Hangi hayvan (boş: hepsi)',ipucu:'kedi, köpek...'},{k:'tekrar_gun',ad:'Kaç günde bir tekrarlanır',tip:'sayi',zorunlu:true},{k:'aciklama',ad:'Açıklama',tip:'uzun'},{k:'aktif',ad:'Aktif',tip:'onay'}],vars:{tur:'asi',aktif:true},
+    yaz:x=>[x.ad+(x.aktif?'':' (pasif)'),x.tekrar_gun+' günde bir'+(x.hayvan_turu?' · '+x.hayvan_turu:'')]},
+  bakim_talimati:{ad:'İşlem sonrası bakım talimatları',tekil:'Talimat',sira:'islem_adi',alan:[{k:'islem_adi',ad:'İşlem adı',zorunlu:true,ipucu:'örn. Kısırlaştırma'},{k:'talimat',ad:'Müşteriye aynen iletilecek talimat',tip:'uzun',zorunlu:true}],vars:{},yaz:x=>[x.islem_adi,x.talimat.slice(0,90)+(x.talimat.length>90?'...':'')]},
+  bilgi:{ad:'Sık sorulan sorular',tekil:'Bilgi',sira:'created_at',alan:[{k:'soru',ad:'Soru ya da konu',zorunlu:true,ipucu:'örn. Otopark var mı?'},{k:'cevap',ad:'Cevap',tip:'uzun',zorunlu:true}],vars:{},yaz:x=>[x.soru,x.cevap.slice(0,90)+(x.cevap.length>90?'...':'')]}
+};
+async function ayarCiz(){
+  if(D.alt?.tablo)return tabloCiz(D.alt.tablo);
+  if(D.alt?.sayfa)return ({bilgi:klinikBilgi,saat:saatCiz,maliyet:maliyetCiz})[D.alt.sayfa]();
+  const k=klinik(),s=(a,b,c)=>`<div class="kart tik" onclick="${c}"><div class="satir"><div class="buyu"><div class="baslik">${a}</div><div class="alt">${b}</div></div><span class="alt">›</span></div></div>`;
+  ic(`<h2>Ayarlar</h2>
+  ${s('Klinik bilgileri','Ad, adres, konum, telefonlar, bakılan hayvanlar',"D.alt={sayfa:'bilgi'};ayarCiz()")}
+  ${s('Çalışma saatleri','Hangi gün, kaçtan kaça açık',"D.alt={sayfa:'saat'};ayarCiz()")}
+  ${Object.entries(TABLOLAR).map(([t,v])=>s(v.ad,'Ekle, düzenle, sil',`D.alt={tablo:'${t}'};ayarCiz()`)).join('')}
+  <div class="kart"><div class="baslik">Asistanın üslubu</div><div class="dugmeler"><button class="b ${k.uslup==='samimi'?'':'ikincil'}" onclick="uslup('samimi')">Samimi</button><button class="b ${k.uslup==='resmi'?'':'ikincil'}" onclick="uslup('resmi')">Resmi</button></div><div class="alt" style="margin-top:8px">${k.uslup==='samimi'?'Örnek: "Merhaba Ayşe Hanım, Pamuk nasıl bugün? 🐾"':'Örnek: "Merhaba Ayşe Hanım, Pamuk\'un durumu hakkında bilgi alabilir miyim?"'}</div></div>
+  ${s('Aylık masraf','Yapay zekâ ve WhatsApp harcaması, üst sınır',"D.alt={sayfa:'maliyet'};ayarCiz()")}
+  ${D.admin?'<button class="b ikincil tam" onclick="klinikEkle()" style="margin-bottom:10px">+ Yeni klinik ekle</button>':''}
+  <button class="b tehlike tam" onclick="cikis()">Çıkış yap</button><p class="alt" style="text-align:center">${esc(D.kullanici.email)}</p>`);
+}
+const ayarGeri='<button class="geri" onclick="D.alt=null;ayarCiz()">‹ Ayarlar</button>';
+async function klinikGuncelle(o){const r=await calistir(sb.from('klinik').update(o).eq('id',D.kid).select().single());Object.assign(klinik(),r)}
+async function uslup(u){try{await klinikGuncelle({uslup:u});ayarCiz()}catch(e){hata(e)}}
+const KB_ALAN=[{k:'ad',ad:'Klinik adı',zorunlu:true},{k:'sehir',ad:'Şehir'},{k:'adres',ad:'Adres',tip:'uzun'},{k:'konum_url',ad:'Harita bağlantısı (Google Haritalar)',tip:'url'},{k:'telefon',ad:'Klinik telefonu',tip:'tel'},{k:'acil_telefon',ad:'Acil telefon (acil durumda müşteriye verilir)',tip:'tel'},{k:'patron_telefon',ad:'Klinik sahibinin WhatsApp numarası',tip:'tel'},{k:'bakilan',ad:'Bakılan hayvanlar (virgülle)',ipucu:'kedi, köpek, kuş'},{k:'ek',ad:'Ek hizmetler (virgülle)',ipucu:'pet otel, tıraş'},{k:'google_yorum_url',ad:'Google yorum bağlantısı',tip:'url'},{k:'geri_kazanim_gun',ad:'Kaç gün gelmeyene hatırlatma gitsin',tip:'sayi'}];
+function klinikBilgi(){
+  const k=klinik(),v={...k,bakilan:k.bakilan_hayvanlar.join(', '),ek:k.ek_hizmetler.join(', ')};
+  ic(ayarGeri+`<h2>Klinik bilgileri</h2><div class="kart">${KB_ALAN.map(a=>alanHtml(a,v)).join('')}<div class="dugmeler"><button class="b tam" onclick="klinikBilgiKaydet()">Kaydet</button></div></div>`);
+}
+async function klinikBilgiKaydet(){
+  const o=alanOku(KB_ALAN);if(!o.ad)return bildir('Klinik adı boş olamaz');
+  const ayir=s=>(s||'').split(',').map(x=>x.trim()).filter(Boolean);
+  o.bakilan_hayvanlar=ayir(o.bakilan);o.ek_hizmetler=ayir(o.ek);delete o.bakilan;delete o.ek;if(o.geri_kazanim_gun==null)o.geri_kazanim_gun=180;
+  try{await klinikGuncelle(o);bildir('Kaydedildi');ciz()}catch(e){hata(e)}
+}
+function saatCiz(){
+  const c=klinik().calisma_saatleri||{};
+  ic(ayarGeri+`<h2>Çalışma saatleri</h2><div class="kart">${GUNLER.map(([g,ad])=>{const x=c[g]||{acik:false,ac:'09:00',kapa:'18:00'};return `<div class="onay"><input type="checkbox" id="g_${g}" ${x.acik?'checked':''}><label for="g_${g}" style="min-width:96px"><b>${ad}</b></label></div><div class="satir" style="margin:6px 0 12px"><input type="time" id="a_${g}" value="${esc(x.ac)}"><span>-</span><input type="time" id="k_${g}" value="${esc(x.kapa)}"></div>`}).join('')}<button class="b tam" onclick="saatKaydet()">Kaydet</button></div>`);
+}
+async function saatKaydet(){const c={};for(const [g] of GUNLER)c[g]={acik:$('#g_'+g).checked,ac:$('#a_'+g).value,kapa:$('#k_'+g).value};try{await klinikGuncelle({calisma_saatleri:c});bildir('Kaydedildi')}catch(e){hata(e)}}
+async function tabloCiz(t){
+  const T=TABLOLAR[t];
+  try{const l=await calistir(sb.from(t).select('*').eq('klinik_id',D.kid).order(T.sira));tabloCiz.l=l;
+    ic(ayarGeri+`<h2>${T.ad}</h2><button class="b tam" style="margin-bottom:12px" onclick="tabloForm('${t}')">+ ${T.tekil} ekle</button>${l.map(x=>{const y=T.yaz(x);return `<div class="kart tik" onclick="tabloForm('${t}','${x.id}')"><div class="baslik">${esc(y[0])}</div><div class="alt">${esc(y[1])}</div></div>`}).join('')||'<div class="bos">Henüz kayıt yok.</div>'}`);
+  }catch(e){hata(e)}
+}
+function tabloForm(t,id){
+  const T=TABLOLAR[t],x=id?tabloCiz.l.find(y=>y.id===id):T.vars;
+  formAc(id?T.tekil+' düzenle':'Yeni '+T.tekil.toLocaleLowerCase('tr'),T.alan,x,async o=>{if(id)await calistir(sb.from(t).update(o).eq('id',id));else await calistir(sb.from(t).insert({...o,klinik_id:D.kid}));tabloCiz(t)},id?async()=>{await calistir(sb.from(t).delete().eq('id',id));tabloCiz(t)}:null);
+}
+async function maliyetCiz(){
+  const k=klinik(),b=new Date();b.setDate(1);b.setHours(0,0,0,0);
+  try{const l=await calistir(sb.from('maliyet_kaydi').select('tur,tutar_usd').eq('klinik_id',D.kid).gte('created_at',b.toISOString()));
+    const yz=l.filter(x=>x.tur==='yapay_zeka').reduce((a,x)=>a+Number(x.tutar_usd),0),wa=l.filter(x=>x.tur==='whatsapp').reduce((a,x)=>a+Number(x.tutar_usd),0),top=yz+wa,lim=Number(k.aylik_limit_usd);
+    ic(ayarGeri+`<h2>Bu ayın masrafı</h2><div class="kart"><div class="baslik" style="font-size:22px">${top.toFixed(2)} $ <span class="alt">/ ${lim.toFixed(2)} $ sınır</span></div><div class="cubuk"><i style="width:${Math.min(100,lim?top/lim*100:0)}%"></i></div><div class="alt" style="margin-top:10px">Yapay zekâ: ${yz.toFixed(2)} $</div><div class="alt">WhatsApp mesajları: ${wa.toFixed(2)} $</div></div>
+    <div class="kart"><label>Aylık üst sınır (dolar)</label><input id="lim" type="number" step="any" inputmode="decimal" value="${lim}"><div class="alt" style="margin-top:6px">Sınır dolunca asistan otomatik mesajları durdurur ve klinik sahibine haber verir. Acil durum yönlendirmesi her zaman çalışır.</div><div class="dugmeler"><button class="b" onclick="limitKaydet()">Kaydet</button></div></div>`);
+  }catch(e){hata(e)}
+}
+async function limitKaydet(){const v=Number($('#lim').value);if(!(v>=0))return bildir('Geçerli bir sayı yazın');try{await klinikGuncelle({aylik_limit_usd:v});bildir('Kaydedildi');maliyetCiz()}catch(e){hata(e)}}
+function klinikEkle(){formAc('Yeni klinik',[{k:'ad',ad:'Klinik adı',zorunlu:true},{k:'sehir',ad:'Şehir'}],{},async o=>{const c={};for(const [g] of GUNLER)c[g]={acik:g!=='paz',ac:'09:00',kapa:'18:00'};const r=await calistir(sb.from('klinik').insert({...o,calisma_saatleri:c}).select().single());D.klinikler.push(r);klinikSec(r.id);bildir('Klinik eklendi')})}
+
+basla();
+</script>
+</body>
+</html>
